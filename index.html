@@ -18,11 +18,65 @@
   #hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);
     font-size:12px;opacity:.45;letter-spacing:.5px;pointer-events:none;text-align:center;width:100%}
   @media (max-width:780px){#hint{display:none}}
+
+  /* ---------------- mobile on-screen controls ---------------- */
+  html,body{touch-action:none;overscroll-behavior:none}
+  .touchctl{display:none;position:fixed;z-index:20;
+    user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  body.touch .touchctl{display:block}
+  body.touch #hint{display:none}
+  .pad,.acts{width:46vmin;height:46vmin;bottom:3.5vmin}
+  .pad{left:2.5vmin}
+  .acts{right:2.5vmin}
+  .menu-btn{top:2vmin;right:2vmin}
+  .ctl{position:absolute;margin:0;padding:0;appearance:none;-webkit-appearance:none;
+    display:flex;align-items:center;justify-content:center;border-radius:50%;
+    color:#fff;font-family:'Trebuchet MS',sans-serif;font-weight:700;line-height:1;
+    background:rgba(18,18,26,0.40);border:0.5vmin solid rgba(255,255,255,0.32);
+    box-shadow:0 0.4vmin 1vmin rgba(0,0,0,0.45);
+    -webkit-tap-highlight-color:transparent;outline:none;touch-action:none;cursor:pointer;
+    transition:transform .04s ease, background .04s ease}
+  .ctl.on{transform:scale(.9);background:rgba(255,255,255,0.26)}
+  .dbtn{width:15vmin;height:15vmin;font-size:6vmin}
+  .abtn{width:15vmin;height:15vmin;font-size:5.4vmin}
+  .d-up{left:15.5vmin;top:0}   .d-down{left:15.5vmin;bottom:0}
+  .d-left{left:0;top:15.5vmin} .d-right{right:0;top:15.5vmin}
+  .a-up{left:15.5vmin;top:0}   .a-down{left:15.5vmin;bottom:0}
+  .a-left{left:0;top:15.5vmin} .a-right{right:0;top:15.5vmin}
+  .a-special{border-color:#4ad0ff;color:#cdefff;font-size:4.4vmin}
+  .a-light{border-color:#ffcf4a;color:#ffe9b0}
+  .a-heavy{border-color:#ff8a3c;color:#ffd2b0}
+  .a-block{border-color:#9fb2cc;color:#dfe8f4;font-size:3.4vmin}
+  .mbtn{width:10vmin;height:10vmin;font-size:3.4vmin}
+  #rotate-hint{display:none;position:fixed;inset:0;z-index:40;
+    background:rgba(8,6,10,0.93);color:#ffcf4a;text-align:center;
+    align-items:center;justify-content:center;font-family:'Trebuchet MS',sans-serif}
+  #rotate-hint>div{font-size:6vw;font-weight:700;line-height:1.7}
+  #rotate-hint small{font-size:3.2vw;color:#bbb;font-weight:400}
+  @media (orientation:portrait){ body.touch:not(.norotate) #rotate-hint{display:flex} }
 </style>
 </head>
 <body>
   <div id="wrap"><canvas id="game" width="960" height="540"></canvas></div>
   <div id="hint">P1: A/D move · W jump · S crouch · F light · G heavy · H special · hold away = block &nbsp;|&nbsp; P2: ◀▶ ▲ ▼ · , light · . heavy · / special &nbsp;|&nbsp; M mute · Esc menu</div>
+
+  <!-- mobile on-screen controls (shown only on touch devices) -->
+  <div class="touchctl pad">
+    <button class="ctl dbtn d-up"    data-k="w" aria-label="Jump">▲</button>
+    <button class="ctl dbtn d-left"  data-k="a" aria-label="Left">◀</button>
+    <button class="ctl dbtn d-right" data-k="d" aria-label="Right">▶</button>
+    <button class="ctl dbtn d-down"  data-k="s" aria-label="Crouch">▼</button>
+  </div>
+  <div class="touchctl acts">
+    <button class="ctl abtn a-special a-up"  data-k="h"     aria-label="Special">SP</button>
+    <button class="ctl abtn a-light a-left"  data-k="f"     aria-label="Light">L</button>
+    <button class="ctl abtn a-heavy a-right" data-k="g"     aria-label="Heavy">H</button>
+    <button class="ctl abtn a-block a-down"  data-k="block" aria-label="Block">BLK</button>
+  </div>
+  <div class="touchctl menu-btn">
+    <button class="ctl mbtn" data-k="escape" aria-label="Menu">❚❚</button>
+  </div>
+  <div id="rotate-hint"><div>↻<br>Rotate to landscape<br><small>tap to play anyway</small></div></div>
 <script>
 "use strict";
 /* =========================================================================
@@ -203,6 +257,7 @@ const Audio = (()=>{
 /* --------------------------------------------------------------- input ---- */
 const keys = {};                 // physical key state
 const pressed = {};              // edge: set on keydown, cleared after consume
+let touchBlock = false;          // on-screen Block button (mobile), affects player 0
 const P1KEYS = {left:"a", right:"d", up:"w", down:"s", light:"f", heavy:"g", special:"h"};
 const P2KEYS = {left:"arrowleft", right:"arrowright", up:"arrowup", down:"arrowdown",
                 light:",", heavy:".", special:"/"};
@@ -285,7 +340,8 @@ class Fighter {
   }
   canAct(){ return ["idle","walk","crouch","block"].includes(this.state) && this.onGround; }
   isBlockingDir(opp){
-    // holding away from opponent and not attacking
+    // holding away from opponent (or the mobile Block button) and not attacking
+    if(this.player===0 && touchBlock) return true;
     const awayKey = (opp.x>this.x) ? "left" : "right";
     const km = this.player===0?P1KEYS:P2KEYS;
     return held(km[awayKey]);
@@ -1654,6 +1710,47 @@ function drawMuteIcon(){
     ctx.beginPath(); ctx.moveTo(x-9,y-9); ctx.lineTo(x+9,y+9); ctx.stroke(); }
   else { ctx.beginPath(); ctx.arc(x+4,y,6,-0.6,0.6); ctx.stroke(); }
 }
+
+/* ============================================== mobile touch controls ==== */
+function setupTouch(){
+  const isTouch = window.matchMedia("(pointer: coarse)").matches
+    || ("ontouchstart" in window) || navigator.maxTouchPoints>0
+    || location.search.includes("touch");
+  if(isTouch) document.body.classList.add("touch");
+
+  const press = k => { if(k==="block"){ touchBlock=true; return; }
+    if(!keys[k]) pressed[k]=true; keys[k]=true; Audio.ensure(); };
+  const release = k => { if(k==="block"){ touchBlock=false; return; } keys[k]=false; };
+
+  document.querySelectorAll(".ctl").forEach(el=>{
+    const k = el.dataset.k;
+    const on  = e => { e.preventDefault(); el.classList.add("on"); press(k); };
+    const off = e => { if(e) e.preventDefault(); el.classList.remove("on"); release(k); };
+    el.addEventListener("pointerdown", on);
+    el.addEventListener("pointerup", off);
+    el.addEventListener("pointercancel", off);
+    el.addEventListener("pointerleave", off);
+    el.addEventListener("contextmenu", e=>e.preventDefault());
+  });
+
+  // tap the play area to start / advance menus (so a first tap "just works")
+  cv.addEventListener("pointerdown", ()=>{
+    Audio.ensure();
+    if(game.state===STATE.TITLE){ if(!keys["1"]) pressed["1"]=true; }
+    else if(game.state===STATE.MATCH_END){ if(!keys[" "]) pressed[" "]=true; }
+  });
+
+  // dismiss the rotate hint if the player insists on portrait
+  const rot=document.getElementById("rotate-hint");
+  if(rot) rot.addEventListener("pointerdown", ()=>document.body.classList.add("norotate"));
+
+  // safety: never leave a button stuck held if focus/visibility is lost
+  const releaseAll = ()=>{ ["w","a","s","d","f","g","h"].forEach(k=>keys[k]=false);
+    touchBlock=false; document.querySelectorAll(".ctl.on").forEach(e=>e.classList.remove("on")); };
+  window.addEventListener("blur", releaseAll);
+  document.addEventListener("visibilitychange", ()=>{ if(document.hidden) releaseAll(); });
+}
+setupTouch();
 
 /* ================================================================ LOOP ==== */
 let acc=0, last=performance.now();

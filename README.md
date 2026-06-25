@@ -42,6 +42,15 @@ returns to the menu.
 - **1** — 1 Player vs CPU
 - **2** — 2 Player local versus
 
+### Mobile
+
+On phones and tablets, on-screen touch controls appear automatically: a D-pad
+on the left (▲ jump · ◀▶ move · ▼ crouch) and an action cluster on the right
+(**SP** special · **L** light · **H** heavy · **BLK** block), plus a menu button.
+Landscape is recommended (a prompt nudges you to rotate). Tap the screen on the
+title to start. The buttons just feed the same inputs as the keyboard, so
+everything plays identically.
+
 ## Run locally
 
 It's a static file — open `index.html`, or:
